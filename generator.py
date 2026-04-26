@@ -1,21 +1,8 @@
 import torch
 import torch.nn as nn
 
-def top_p(logits, p):
-    sorted_logits, sorted_indices = torch.sort(torch.softmax(logits, dim=-1), descending=True)
-    cum_sum = torch.cumsum(sorted_logits, dim=-1)
-
-    mask = cum_sum > p
-
-    mask[..., 1:] = mask[..., :-1].clone()
-    mask[..., 0] = False
-
-    logits[sorted_indices[mask]] = float('-inf')
-
-    return logits
-
 class Generator(nn.Module):
-    def __init__(self, hidden_state, features, tokenizer):
+    def __init__(self, hidden_state, features, vocab_count, pad):
         super().__init__()
 
         self.see = nn.Parameter(torch.empty(2 * features, features))
@@ -28,11 +15,10 @@ class Generator(nn.Module):
 
         self.ln = nn.LayerNorm(features)
 
-        self.tokenizer = tokenizer
-        self.emb = nn.Embedding(tokenizer.size, features, padding_idx=tokenizer.pad)
+        self.emb = nn.Embedding(vocab_count, features, padding_idx=pad)
 
         self.features = features
-        self.ce_loss = nn.CrossEntropyLoss(reduction='mean', ignore_index=tokenizer.pad)
+        self.ce_loss = nn.CrossEntropyLoss(reduction='mean', ignore_index=pad)
 
     def forward(self, inputs, targets = None):
 
@@ -65,10 +51,22 @@ class Generator(nn.Module):
             loss = torch.stack(loss_log).mean()
             return loss
 
-    def pred(self, x, n, temperature=1.0, p=1.0, freq_penalty = 1.0):
-        list_x = x.tolist()
-        word = ''.join(self.tokenizer.decode(list_x[0][1:]))
+    @staticmethod
+    def top_p_filter(logits, p):
+        sorted_logits, sorted_indices = torch.sort(torch.softmax(logits, dim=-1), descending=True)
+        cum_sum = torch.cumsum(sorted_logits, dim=-1)
 
+        mask = cum_sum > p
+
+        mask[..., 1:] = mask[..., :-1].clone()
+        mask[..., 0] = False
+
+        logits[sorted_indices[mask]] = float('-inf')
+
+        return logits
+
+    def pred(self, x, stop_token, banned_tokens, n, temperature=1.0, p=1.0, freq_penalty = 1.0):
+        list_x = x.tolist()
         with torch.no_grad():
             for _ in range(n):
                 curr_x = torch.tensor(list_x, dtype=torch.long, device=x.device)
@@ -80,19 +78,19 @@ class Generator(nn.Module):
                 freqs = torch.bincount(curr_x[0], minlength=logits.size(-1))
                 logits = logits - freq_penalty * freqs
 
-                for token in self.tokenizer.banned_tokens:
+                # Mask
+                for token in banned_tokens:
                     logits[token] = float('-inf')
 
-                top_p_filtered = top_p(logits, p)
+                # Apply top-p filtering
+                top_p_filtered = Generator.top_p_filter(logits, p)
                 probs = torch.softmax(top_p_filtered, dim=-1)
 
+                # Predict
                 prediction = torch.multinomial(probs, 1)[0].item()
 
-                if prediction == self.tokenizer.eow: break
-                add = self.tokenizer.decode([prediction])
-
-                word += add
+                if prediction == stop_token: break
                 list_x[0].append(prediction)
 
-        return word
+        return list_x
 

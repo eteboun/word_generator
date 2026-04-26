@@ -1,0 +1,16 @@
+{
+    "features": 128,
+    "hidden_state": 512,
+
+    "batch_size": 64,
+
+    "epochs": 50,
+    "lr": 0.001,
+    "step_size": 30,
+    "gamma": 0.6,
+
+    "temperature": 1.2,
+    "p": 0.95,
+    "freq_penalty": 1.5,
+    "n": 10
+}

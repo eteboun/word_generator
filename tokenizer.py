@@ -13,7 +13,7 @@ class Tokenizer:
 
         self.letters = {'<unk>': 0, '</w>': 1, '<w>': 2, '<pad>': 3}
         self.letters_t = {}
-        self.size = 4
+        self.vocab_count = 4
 
     def load(self, text):
         text = text.replace('İ', 'i').replace('I', 'ı').lower()
@@ -24,8 +24,8 @@ class Tokenizer:
             for i in range(length):
                 char = word[i]
                 if char not in self.letters:
-                    self.letters[char] = self.size
-                    self.size += 1
+                    self.letters[char] = self.vocab_count
+                    self.vocab_count += 1
 
         self.letters_t = {idx: word for word, idx in self.letters.items()}
 
