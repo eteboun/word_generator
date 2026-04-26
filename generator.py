@@ -1,5 +1,30 @@
 import torch
 import torch.nn as nn
+import time
+from functools import wraps
+
+def timer(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        loss = func(*args, **kwargs)
+        end = time.time()
+
+        print(f'{func.__name__} train step took {(end - start) * 1000:.3f} ms')
+        return loss
+
+    return wrapper
+
+
+def logger(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        print(f'epoch started.')
+        loss = func(*args, **kwargs)
+        print(f'epoch ended.')
+        return loss
+
+    return wrapper
 
 class Generator(nn.Module):
     def __init__(self, hidden_state, features, vocab_count, pad):
@@ -50,6 +75,29 @@ class Generator(nn.Module):
         else:
             loss = torch.stack(loss_log).mean()
             return loss
+
+    @logger
+    @timer
+    def train(self, batch_iter, optimizer):
+        epoch_loss = 0.0
+        count = 0
+
+        for x, y in batch_iter:
+            optimizer.zero_grad()
+
+            inputs = torch.tensor(x, dtype=torch.long, device=self.emb.weight.device)
+            targets = torch.tensor(y, dtype=torch.long, device=self.emb.weight.device)
+
+            loss = self(inputs, targets)
+
+            loss.backward()
+            optimizer.step()
+
+            count += 1
+            epoch_loss += loss.item()
+
+        calc_loss = epoch_loss / count
+        return calc_loss
 
     @staticmethod
     def top_p_filter(logits, p):
