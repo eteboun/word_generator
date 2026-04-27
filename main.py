@@ -15,6 +15,7 @@ with open('data.txt', encoding='utf-8') as f:
 # Load tokenizer
 tkz = tokenizer.Tokenizer()
 tkz.load(data)
+tkz.set_batch_data(data)
 
 # Create model
 model = generator.Generator(cfg.hidden_state, cfg.features, tkz.vocab_count, tkz.pad).to(device)
@@ -25,7 +26,7 @@ scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=cfg.step_size, 
 
 prev_epoch_loss = 0.0
 for i in range(cfg.epochs):
-    batch_iter = tkz.batch(data, cfg.batch_size)
+    batch_iter = tkz.create_batches(cfg.batch_size)
 
     mean_epoch_loss = model.train(batch_iter, optimizer)
     scheduler.step()

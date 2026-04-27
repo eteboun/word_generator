@@ -15,6 +15,10 @@ class Tokenizer:
         self.letters_t = {}
         self.vocab_count = 4
 
+        self.parsed_train_data = None
+        self.parsed_val_data = None
+        self.parsed_test_data = None
+
     def load(self, text):
         text = text.replace('İ', 'i').replace('I', 'ı').lower()
         text = re.findall(r'[^\W_]+', text)
@@ -57,13 +61,36 @@ class Tokenizer:
 
         return tokenized_
 
-    def batch(self, text, batch_size):
+    def set_batch_data(self, data, train = 1.0, val = 0.0, test = 0.0):
+        if train + val + test != 1.0:
+            raise ValueError('Total probability must be equal to 1.0')
 
-        text = text.replace('İ', 'i').replace('I', 'ı').lower()
-        text = re.findall(r'[^\W_]+', text)
-        random.shuffle(text)
+        data = data.replace('İ', 'i').replace('I', 'ı').lower()
+        data = re.findall(r'[^\W_]+', data)
+        random.shuffle(data)
 
-        raw_batches = batched(text, batch_size)
+        data_size = len(data)
+        train_end_idx = int(train * data_size)
+        val_end_idx = train_end_idx + int(val * data_size)
+
+        self.parsed_train_data = data[:train_end_idx]
+        self.parsed_val_data = data[train_end_idx:val_end_idx]
+        self.parsed_test_data = data[val_end_idx:]
+
+    def create_batches(self, batch_type = 'train', batch_size = 32, shuffle = True):
+
+        batch_types = {
+            'train': self.parsed_train_data,
+            'val': self.parsed_val_data,
+            'test': self.parsed_test_data
+        }
+
+        if batch_type not in batch_types: raise Exception('Invalid batch type.')
+
+        selected_data = list(batch_types[batch_type])
+        if batch_type == 'train' and shuffle: random.shuffle(selected_data)
+
+        raw_batches = batched(selected_data, batch_size)
         for raw_batch in raw_batches:
             seq_len = len(max(raw_batch, key=len)) + 2
             batch_x = []

@@ -10,7 +10,7 @@ def timer(func):
         loss = func(*args, **kwargs)
         end = time.time()
 
-        print(f'{func.__name__} train step took {(end - start) * 1000:.3f} ms')
+        print(f'{func.__name__} train step took {(end - start):.3f} s')
         return loss
 
     return wrapper

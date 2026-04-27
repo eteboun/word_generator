@@ -9,8 +9,8 @@
     "step_size": 30,
     "gamma": 0.6,
 
-    "temperature": 1.2,
-    "p": 0.95,
+    "temperature": 0.9,
+    "p": 0.9,
     "freq_penalty": 1.5,
     "n": 10
 }
