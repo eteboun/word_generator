@@ -62,7 +62,7 @@ class Tokenizer:
         return tokenized_
 
     def set_batch_data(self, data, train = 1.0, val = 0.0, test = 0.0):
-        if train + val + test != 1.0:
+        if not abs(train + val + test - 1.0) < 1e-6:
             raise ValueError('Total probability must be equal to 1.0')
 
         data = data.replace('İ', 'i').replace('I', 'ı').lower()

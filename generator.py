@@ -10,18 +10,7 @@ def timer(func):
         loss = func(*args, **kwargs)
         end = time.time()
 
-        print(f'{func.__name__} train step took {(end - start):.3f} s')
-        return loss
-
-    return wrapper
-
-
-def logger(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        print(f'epoch started.')
-        loss = func(*args, **kwargs)
-        print(f'epoch ended.')
+        print(f'{func.__name__} epoch took {(end - start):.3f} s', end='')
         return loss
 
     return wrapper
@@ -76,7 +65,6 @@ class Generator(nn.Module):
             loss = torch.stack(loss_log).mean()
             return loss
 
-    @logger
     @timer
     def train(self, batch_iter, optimizer):
         epoch_loss = 0.0
@@ -97,6 +85,43 @@ class Generator(nn.Module):
             epoch_loss += loss.item()
 
         calc_loss = epoch_loss / count
+        return calc_loss
+
+    def val(self, batch_iter):
+        epoch_loss = 0.0
+        count = 0
+
+        with torch.no_grad():
+            for x, y in batch_iter:
+
+                inputs = torch.tensor(x, dtype=torch.long, device=self.emb.weight.device)
+                targets = torch.tensor(y, dtype=torch.long, device=self.emb.weight.device)
+
+                loss = self(inputs, targets)
+
+                count += 1
+                epoch_loss += loss.item()
+
+            calc_loss = epoch_loss / count
+
+        return calc_loss
+
+    def test(self, batch_iter):
+        batch_loss = 0.0
+        count = 0
+
+        with torch.no_grad():
+            for x, y in batch_iter:
+                inputs = torch.tensor(x, dtype=torch.long, device=self.emb.weight.device)
+                targets = torch.tensor(y, dtype=torch.long, device=self.emb.weight.device)
+
+                loss = self(inputs, targets)
+
+                count += 1
+                batch_loss += loss.item()
+
+            calc_loss = batch_loss / count
+
         return calc_loss
 
     @staticmethod

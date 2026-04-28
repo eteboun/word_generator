@@ -15,7 +15,7 @@ with open('data.txt', encoding='utf-8') as f:
 # Load tokenizer
 tkz = tokenizer.Tokenizer()
 tkz.load(data)
-tkz.set_batch_data(data)
+tkz.set_batch_data(data=data, train=0.7, val=0.2, test=0.1)
 
 # Create model
 model = generator.Generator(cfg.hidden_state, cfg.features, tkz.vocab_count, tkz.pad).to(device)
@@ -24,20 +24,32 @@ model = generator.Generator(cfg.hidden_state, cfg.features, tkz.vocab_count, tkz
 optimizer = optim.Adam(model.parameters(), lr=cfg.lr)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=cfg.step_size, gamma=cfg.gamma)
 
-prev_epoch_loss = 0.0
+prev_train_loss = 0.0
 for i in range(cfg.epochs):
-    batch_iter = tkz.create_batches(cfg.batch_size)
+    batch_iter = tkz.create_batches(batch_size = cfg.batch_size, batch_type='train')
 
-    mean_epoch_loss = model.train(batch_iter, optimizer)
+    mean_train_loss = model.train(batch_iter, optimizer)
     scheduler.step()
 
-    print(f'epoch {i+1} loss: {mean_epoch_loss:.4f}')
+    print(f' || epoch {i+1} loss: {mean_train_loss:.4f}', end= '' if i != 0 else '\n')
 
     if i != 0:
-        loss_diff = prev_epoch_loss - mean_epoch_loss
-        print(f'loss change: ↓{loss_diff:.4f}')
+        loss_diff = prev_train_loss - mean_train_loss
+        print(f' || loss change: ↓{loss_diff:.4f}')
 
-    prev_epoch_loss = mean_epoch_loss
+    prev_train_loss = mean_train_loss
+
+    if (i + 1) % (cfg.epochs // 5) == 0:
+        val_iter = tkz.create_batches(batch_size=cfg.batch_size, batch_type='val')
+        mean_val_loss = model.val(val_iter)
+
+        print(f'validation loss: {mean_val_loss:.4f}')
+
+# Test model
+test_iter = tkz.create_batches(batch_size = cfg.batch_size, batch_type='test')
+mean_test_loss = model.test(test_iter)
+
+print(f'test loss: {mean_test_loss:.4f}')
 
 # Predictions
 while 1:
