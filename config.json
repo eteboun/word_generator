@@ -1,13 +1,15 @@
 {
-    "features": 256,
+    "features": 512,
     "hidden_state": 1024,
 
-    "batch_size": 64,
+    "batch_size": 128,
 
-    "epochs": 10,
+    "epochs": 15,
     "lr": 0.001,
+    "regularization": "l1",
     "step_size": 30,
     "gamma": 0.6,
+    "l1_const": 1e-6,
 
     "temperature": 0.9,
     "p": 0.9,

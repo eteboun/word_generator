@@ -10,7 +10,7 @@ def timer(func):
         loss = func(*args, **kwargs)
         end = time.time()
 
-        print(f'{func.__name__} epoch took {(end - start):.3f} s', end='')
+        print(f'{func.__name__} epoch took {(end - start):.3f} s')
         return loss
 
     return wrapper
@@ -66,8 +66,10 @@ class Generator(nn.Module):
             return loss
 
     @timer
-    def train(self, batch_iter, optimizer):
-        epoch_loss = 0.0
+    def train_epoch(self, batch_iter, optimizer, regularization = "none",
+                    l1_const = 0.0):
+        epoch_data_loss = 0.0
+        epoch_total_loss = 0.0
         count = 0
 
         for x, y in batch_iter:
@@ -77,20 +79,31 @@ class Generator(nn.Module):
             targets = torch.tensor(y, dtype=torch.long, device=self.emb.weight.device)
 
             loss = self(inputs, targets)
+            epoch_data_loss += loss.item()
+
+            if regularization == "l1":
+                l1_penalty = sum(p.abs().sum() for p in self.parameters())
+                loss = loss + l1_const * l1_penalty
+                epoch_total_loss += loss.item()
 
             loss.backward()
             optimizer.step()
 
             count += 1
-            epoch_loss += loss.item()
 
-        calc_loss = epoch_loss / count
-        return calc_loss
+        calc_epoch_data_loss = epoch_data_loss / count
+        calc_epoch_total_loss = epoch_total_loss / count
+
+        return {
+            'train_data_loss': calc_epoch_data_loss,
+            'train_total_loss': calc_epoch_total_loss,
+        }
 
     def val(self, batch_iter):
         epoch_loss = 0.0
         count = 0
 
+        self.eval()
         with torch.no_grad():
             for x, y in batch_iter:
 
@@ -104,6 +117,7 @@ class Generator(nn.Module):
 
             calc_loss = epoch_loss / count
 
+        self.eval()
         return calc_loss
 
     def test(self, batch_iter):

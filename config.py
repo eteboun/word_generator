@@ -3,11 +3,11 @@ import json
 class Config:
 
     parameters = {"features": int, "hidden_state": int,
-                  "batch_size": int, "epochs": int, "lr": (int, float), "step_size": (int, float), "gamma": (int, float),
+                  "batch_size": int, "epochs": int, "lr": (int, float), "regularization": str, "step_size": (int, float), "gamma": (int, float), "l1_const": (int, float),
                   "temperature": (int, float), "p": (int, float), "freq_penalty": (int, float), "n": int}
 
     def __init__(self, features, hidden_state,
-                 batch_size, epochs, lr, step_size, gamma,
+                 batch_size, epochs, lr, regularization, step_size, gamma, l1_const,
                  temperature, p, freq_penalty, n):
 
         self.features = features
@@ -15,8 +15,10 @@ class Config:
         self.batch_size = batch_size
         self.epochs = epochs
         self.lr = lr
+        self.regularization = regularization
         self.step_size = step_size
         self.gamma = gamma
+        self.l1_const = l1_const
         self.temperature = temperature
         self.p = p
         self.freq_penalty = freq_penalty
