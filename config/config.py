@@ -1,31 +1,22 @@
 import json
+from typing import Self
 
-class Config:
+class TrainConfig:
 
     parameters = {"features": int, "hidden_state": int,
-                  "batch_size": int, "epochs": int, "lr": (int, float), "regularization": str, "step_size": (int, float), "gamma": (int, float), "l1_const": (int, float),
-                  "temperature": (int, float), "p": (int, float), "freq_penalty": (int, float), "n": int}
+                  "batch_size": int, "epochs": int, "lr": (int, float)}
 
     def __init__(self, features, hidden_state,
-                 batch_size, epochs, lr, regularization, step_size, gamma, l1_const,
-                 temperature, p, freq_penalty, n):
+                 batch_size, epochs, lr):
 
         self.features = features
         self.hidden_state = hidden_state
         self.batch_size = batch_size
         self.epochs = epochs
         self.lr = lr
-        self.regularization = regularization
-        self.step_size = step_size
-        self.gamma = gamma
-        self.l1_const = l1_const
-        self.temperature = temperature
-        self.p = p
-        self.freq_penalty = freq_penalty
-        self.n = n
 
     @classmethod
-    def check_params(cls, params):
+    def check_params(cls, params: dict) -> None:
 
         for k, v in params.items():
             required_params_instance = cls.parameters.get(k, None)
@@ -39,9 +30,18 @@ class Config:
                 raise ValueError(f"{k} is missing.")
 
     @classmethod
-    def load(cls, address):
+    def load(cls, address: str) -> Self:
         with open(address) as cfg:
             params = json.load(cfg)
 
         cls.check_params(params)
         return cls(**params)
+
+    def get_elements(self):
+        return {
+            "features": self.features,
+            "hidden_state": self.hidden_state,
+            "batch_size": self.batch_size,
+            "epochs": self.epochs,
+            "lr": self.lr
+        }

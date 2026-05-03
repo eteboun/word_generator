@@ -1,0 +1,9 @@
+{
+    "features": 512,
+    "hidden_state": 1024,
+
+    "batch_size": 128,
+
+    "epochs": 30,
+    "lr": 0.001
+}
