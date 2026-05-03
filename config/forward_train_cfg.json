@@ -1,0 +1,13 @@
+{
+  "train": {
+    "batch_size": 128,
+    "epochs": 30,
+    "lr": 0.001
+  },
+  "paths": {
+    "curr_model": "initial",
+    "data_name": "ds_1",
+    "tokenizer": "initial_tkz",
+    "new_model": "training1"
+  }
+}

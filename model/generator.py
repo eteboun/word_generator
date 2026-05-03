@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from typing import Generator
+from config.config import ModelConfig
+
 
 class Model(nn.Module):
 
@@ -19,11 +21,14 @@ class Model(nn.Module):
         return logits
 
     def __init__(self,
-                 hidden_state: int,
-                 features: int,
+                 cfg: ModelConfig,
                  vocab_count: int,
-                 pad: int):
+                 pad: int) -> None:
         super().__init__()
+
+        features = cfg.features
+        hidden_state = cfg.hidden_state
+        self.cfg = cfg
 
         self.see = nn.Parameter(torch.empty(2 * features, features))
         nn.init.kaiming_normal_(self.see)
@@ -36,8 +41,6 @@ class Model(nn.Module):
         self.ln = nn.LayerNorm(features)
 
         self.emb = nn.Embedding(vocab_count, features, padding_idx=pad)
-
-        self.features = features
         self.ce_loss = nn.CrossEntropyLoss(reduction='mean', ignore_index=pad)
 
     def forward(self,

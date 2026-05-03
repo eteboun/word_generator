@@ -8,55 +8,63 @@ import tokenizer.tokenizer as tokenizer
 import config.config as config
 from model.generator import Model
 
-# Path control
-if os.path.exists('./model_saves/initial'):
-    shutil.rmtree('./model_saves/initial')
-
-os.makedirs('./model_saves/initial')
-
 # Config
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-init_cfg = config.InitConfig.load('./config/init_cfg.json')
-model_cfg = init_cfg.model
-train_cfg = init_cfg.train
+cfg_name = 'train1_cfg'
+cfg = config.ForwardTrainConfig.load(f'./config/forward_train_cfg.json')
 
-# Read tokenizer data
-with open("./train_datasets/main/train.txt", "r", encoding="utf-8") as f:
+# Path control
+if os.path.exists('./model_saves/' + cfg.paths.new_model):
+    shutil.rmtree('./model_saves/' + cfg.paths.new_model)
+
+os.makedirs(f'./model_saves/{cfg.paths.new_model}')
+
+# Read train data
+with open(f"./train_datasets/{cfg.paths.data_name}/train.txt", "r", encoding="utf-8") as f:
     train_ds = f.read()
-with open("./train_datasets/main/val.txt", "r", encoding="utf-8") as f:
+with open(f"./train_datasets/{cfg.paths.data_name}/val.txt", "r", encoding="utf-8") as f:
     val_ds = f.read()
-with open("./train_datasets/main/test.txt", "r", encoding="utf-8") as f:
+with open(f"./train_datasets/{cfg.paths.data_name}/test.txt", "r", encoding="utf-8") as f:
     test_ds = f.read()
 
-# Create tokenizer
-tkz = tokenizer.Tokenizer()
-tkz.create_vocab(train_ds)
+# Load tokenizer
+tkz = tokenizer.Tokenizer().load(f"./tokenizer/{cfg.paths.tokenizer}.json")
+tkz.set_batch_data(train_ds, val_ds, test_ds)
 
-# Set batches
-tkz.set_batch_data(train=train_ds, val=val_ds, test=test_ds)
+# Load model
+model_general_data = torch.load(f"./model_saves/{cfg.paths.curr_model}/info.pt", map_location=device)
 
-# Create model
+model_cfg = model_general_data["model_config"]
 model = Model(model_cfg, tkz.vocab_count, tkz.pad).to(device)
-optimizer = optim.Adam(model.parameters(), lr=train_cfg.lr)
+
+model_state_dict = model_general_data["model"]
+model.load_state_dict(model_state_dict)
+
+optimizer_state_dict = model_general_data["optimizer"]
+optimizer = optim.Adam(model.parameters())
+optimizer.load_state_dict(optimizer_state_dict)
+
+for group in optimizer.param_groups:
+    group["lr"] = cfg.train.lr
 
 # Run model
-best_val = float('inf')
+best_val = float("inf")
 prev_val_loss = None
 prev_data_loss = None
-data_loss = 0.0
-val_loss = 0.0
+data_loss = model_general_data["data_loss"]
+val_loss = model_general_data["val_loss"]
 data_loss_diff = 0.0
 val_loss_diff = 0.0
 train_log = {
     'device': device,
-    'config': train_cfg.get_elements()}
+    'config': cfg.train.get_elements()}
 
-for i in range(train_cfg.epochs):
+for i in range(cfg.train.epochs):
     epoch_log = {}
 
     model.train()
-    batch_iter = tkz.create_batches(batch_size = train_cfg.batch_size, batch_type='train')
+    batch_iter = tkz.create_batches(batch_size = cfg.train.batch_size, batch_type='train')
 
     start_time = time.time()
     data_loss = model.fit(batch_iter, optimizer)
@@ -66,7 +74,7 @@ for i in range(train_cfg.epochs):
     if i % 2 == 0:
         model.eval()
         with torch.no_grad():
-            val_iter = tkz.create_batches(batch_size=train_cfg.batch_size, batch_type='val')
+            val_iter = tkz.create_batches(batch_size=cfg.train.batch_size, batch_type='val')
             val_loss = model.val(val_iter)
 
             val_loss_diff = val_loss - prev_val_loss if prev_val_loss is not None else 0.0
@@ -97,7 +105,7 @@ for i in range(train_cfg.epochs):
                 'data_loss': data_loss,
                 'val_loss': val_loss,
                 'best_val': best_val,
-            }, './model_saves/initial/info.pt')
+            }, f'./model_saves/{cfg.paths.new_model}(info.pt')
         else:
             epoch_log['best_val'] = round(best_val, 4)
             train_log[f'epoch {i + 1}'] = epoch_log
@@ -106,22 +114,19 @@ for i in range(train_cfg.epochs):
     epoch_log['best_val'] = round(best_val, 4)
     train_log[f'epoch {i + 1}'] = epoch_log
 
-# Load initial model
-initial = torch.load('./model_saves/initial/info.pt', map_location=device)
-model.load_state_dict(initial['model'])
+# Load last model
+last = torch.load(f'./model_saves/{cfg.paths.new_model}/info.pt', map_location=device)
+model.load_state_dict(last['model'])
 
 # Test model
 model.eval()
 
 with torch.no_grad():
-    test_iter = tkz.create_batches(batch_size = train_cfg.batch_size, batch_type='test')
+    test_iter = tkz.create_batches(batch_size = cfg.train.batch_size, batch_type='test')
     test_loss = model.test(test_iter)
 
 train_log['test loss'] = round(test_loss, 4)
 
 # Save train log
-with open('./model_saves/initial/log.json', 'w') as log:
+with open(f'./model_saves/{cfg.paths.new_model}/log.json', 'w') as log:
     json.dump(train_log, log, indent=4)
-
-# Save tokenizer
-tkz.save('./tokenizer/initial_tkz.json')

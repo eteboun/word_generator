@@ -1,9 +1,13 @@
 import re
 import random
+import json
 from itertools import batched
-from typing import Generator
+from typing import Generator, Self
 
 class Tokenizer:
+
+    parameters = {'vocab_count': int, 'letters': dict,
+                  'letters_t': dict}
 
     @staticmethod
     def clean_text(text: str) -> str:
@@ -15,7 +19,32 @@ class Tokenizer:
         text = re.findall(r'[a-zçğıöşü]+', text)
         return text
 
-    def __init__(self):
+    @classmethod
+    def load(cls, address: str) -> Self:
+        with open(address, 'r') as f:
+            state_dict = json.load(f)
+
+        cls.check_params(state_dict)
+        letters_t = {int(k): v for k, v in state_dict["letters_t"].items()}
+
+        state_dict["letters_t"] = letters_t
+        return cls(**state_dict)
+
+    @classmethod
+    def check_params(cls, params: dict) -> None:
+        for k, v in params.items():
+            required_params_instance = cls.parameters.get(k, None)
+            if required_params_instance is None:
+                raise ValueError(f"{k} is not a valid parameter.")
+            if not isinstance(v, required_params_instance):
+                raise TypeError(f"{v} is an unexpected value for the parameter {k} ({required_params_instance} expected).")
+
+        for k in cls.parameters:
+            if k not in params:
+                raise ValueError(f"{k} is missing.")
+
+    def __init__(self, letters = None, letters_t = None, vocab_count = None):
+
         self.unk = 0
         self.eow = 1
         self.sow = 2
@@ -23,15 +52,18 @@ class Tokenizer:
 
         self.banned_tokens = [self.unk, self.pad, self.sow]
 
-        self.letters = {'<unk>': 0, '</w>': 1, '<w>': 2, '<pad>': 3}
-        self.letters_t = {}
-        self.vocab_count = 4
+        if letters is None: self.letters = {'<unk>': 0, '</w>': 1, '<w>': 2, '<pad>': 3}
+        else: self.letters = letters
+        if letters_t is None: self.letters_t = {}
+        else: self.letters_t = letters_t
+        if vocab_count is None: self.vocab_count = 4
+        else: self.vocab_count = vocab_count
 
         self.encoded_train_data = None
         self.encoded_val_data = None
         self.encoded_test_data = None
 
-    def load(self, text: str) -> None:
+    def create_vocab(self, text: str) -> None:
         text = Tokenizer.clean_text(text)
         text = Tokenizer.extract(text)
 
@@ -76,6 +108,7 @@ class Tokenizer:
         test = Tokenizer.clean_text(test)
         test = Tokenizer.extract(test)
         self.encoded_test_data = [self.encode(token, eow=True) for token in test]
+
     def create_batches(self, batch_type: str = 'train', batch_size: int = 32, shuffle: bool = True) \
             -> Generator[tuple[list[list[int]], list[list[int]]], None, None]:
 
@@ -105,6 +138,15 @@ class Tokenizer:
 
             yield batch_x, batch_y
 
-    def tokenize_pred(self, text: str) -> list[int]:
-        text = Tokenizer.clean_text(text)
-        return self.encode(text, eow=False)
+    def save(self, address: str) -> None:
+
+        state_dict = {
+            'vocab_count': self.vocab_count,
+            'letters': self.letters,
+            'letters_t': self.letters_t,
+        }
+
+        with open(address, 'w') as f:
+            json.dump(state_dict, f)
+
+
