@@ -8,12 +8,6 @@ import tokenizer.tokenizer as tokenizer
 import config.config as config
 from model.generator import Model
 
-# Path control
-if os.path.exists('./model_saves/initial'):
-    shutil.rmtree('./model_saves/initial')
-
-os.makedirs('./model_saves/initial')
-
 # Config
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -21,12 +15,18 @@ init_cfg = config.InitConfig.load('./config/init_cfg.json')
 model_cfg = init_cfg.model
 train_cfg = init_cfg.train
 
+# Path control
+if os.path.exists('./model_saves/' + model_cfg.model_name):
+    shutil.rmtree('./model_saves/' + model_cfg.model_name)
+
+os.makedirs('./model_saves/' + model_cfg.model_name)
+
 # Read tokenizer data
-with open("./train_datasets/main/train.txt", "r", encoding="utf-8") as f:
+with open(f"train_datasets/{train_cfg.data_name}/train.txt", "r", encoding="utf-8") as f:
     train_ds = f.read()
-with open("./train_datasets/main/val.txt", "r", encoding="utf-8") as f:
+with open(f"train_datasets/{train_cfg.data_name}/val.txt", "r", encoding="utf-8") as f:
     val_ds = f.read()
-with open("./train_datasets/main/test.txt", "r", encoding="utf-8") as f:
+with open(f"train_datasets/{train_cfg.data_name}/test.txt", "r", encoding="utf-8") as f:
     test_ds = f.read()
 
 # Create tokenizer
@@ -50,7 +50,8 @@ data_loss_diff = 0.0
 val_loss_diff = 0.0
 train_log = {
     'device': device,
-    'config': train_cfg.get_elements()}
+    'train_config': train_cfg.get_elements(),
+    'model_config': model_cfg.get_elements()}
 
 for i in range(train_cfg.epochs):
     epoch_log = {}
@@ -97,7 +98,7 @@ for i in range(train_cfg.epochs):
                 'data_loss': data_loss,
                 'val_loss': val_loss,
                 'best_val': best_val,
-            }, './model_saves/initial/info.pt')
+            }, f'./model_saves/{model_cfg.model_name}/info.pt')
         else:
             epoch_log['best_val'] = round(best_val, 4)
             train_log[f'epoch {i + 1}'] = epoch_log
@@ -106,9 +107,14 @@ for i in range(train_cfg.epochs):
     epoch_log['best_val'] = round(best_val, 4)
     train_log[f'epoch {i + 1}'] = epoch_log
 
-# Load initial model
-initial = torch.load('./model_saves/initial/info.pt', map_location=device)
-model.load_state_dict(initial['model'])
+# Load model
+model_general_data = torch.load(f"./model_saves/{model_cfg.model_name}/info.pt", map_location=device)
+
+model_cfg = config.ModelConfig(**model_general_data["model_config"])
+model = Model(model_cfg, tkz.vocab_count, tkz.pad).to(device)
+
+model_state_dict = model_general_data["model"]
+model.load_state_dict(model_state_dict)
 
 # Test model
 model.eval()
@@ -120,8 +126,8 @@ with torch.no_grad():
 train_log['test loss'] = round(test_loss, 4)
 
 # Save train log
-with open('./model_saves/initial/log.json', 'w') as log:
+with open(f'./model_saves/{model_cfg.model_name}/log.json', 'w') as log:
     json.dump(train_log, log, indent=4)
 
 # Save tokenizer
-tkz.save('./tokenizer/initial_tkz.json')
+tkz.save(f'./tokenizer/{model_cfg.model_name}_tkz.json')

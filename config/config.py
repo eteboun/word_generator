@@ -30,20 +30,22 @@ class Config:
         return self.__dict__.copy()
 
 class ModelConfig(Config):
-    parameters = {"features": int, "hidden_state": int}
+    parameters = {"features": int, "hidden_state": int, "model_name": str}
 
-    def __init__(self, features: int, hidden_state: int) -> None:
+    def __init__(self, features: int, hidden_state: int, model_name: str) -> None:
         self.features = features
         self.hidden_state = hidden_state
+        self.model_name = model_name
 
 class TrainConfig(Config):
     parameters = {"batch_size": int, "epochs": int,
-                  "lr": (int, float)}
+                  "lr": (int, float), "data_name": str}
 
-    def __init__(self, batch_size: int, epochs: int, lr: int | float) -> None:
+    def __init__(self, batch_size: int, epochs: int, lr: int | float, data_name: str) -> None:
         self.batch_size = batch_size
         self.epochs = epochs
         self.lr = lr
+        self.data_name = data_name
 
 class PredictConfig(Config):
     parameters = {"model_name": str, "tokenizer": str,
@@ -61,15 +63,14 @@ class PredictConfig(Config):
         self.n = n
 
 class PathConfig(Config):
-    parameters = {"new_model": str, "data_name": str,
-                  "tokenizer": str, "curr_model": str}
+    parameters = {"save_as": str,
+                  "tokenizer": str, "model_name": str}
 
-    def __init__(self, new_model: str, data_name: str,
-                 tokenizer: str, curr_model: str) -> None:
-        self.new_model = new_model
-        self.data_name = data_name
+    def __init__(self, save_as: str,
+                 tokenizer: str, model_name: str) -> None:
+        self.save_as = save_as
         self.tokenizer = tokenizer
-        self.curr_model = curr_model
+        self.model_name = model_name
 
 class InitConfig(Config):
     parameters = {"model": dict, "train": dict}

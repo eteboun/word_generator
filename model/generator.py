@@ -81,7 +81,7 @@ class Model(nn.Module):
                 self.ce_loss(logits, targets[..., i])
             )
 
-            state = cont
+            state = out
 
 
         loss = torch.stack(loss_log).mean()

@@ -13,17 +13,17 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 cfg = config.ForwardTrainConfig.load(f'./config/forward_train_cfg.json')
 
 # Path control
-if os.path.exists('./model_saves/' + cfg.paths.new_model):
-    shutil.rmtree('./model_saves/' + cfg.paths.new_model)
+if os.path.exists('./model_saves/' + cfg.paths.save_as):
+    shutil.rmtree('./model_saves/' + cfg.paths.save_as)
 
-os.makedirs(f'./model_saves/{cfg.paths.new_model}')
+os.makedirs(f'./model_saves/{cfg.paths.save_as}', exist_ok=False)
 
 # Read train data
-with open(f"./train_datasets/{cfg.paths.data_name}/train.txt", "r", encoding="utf-8") as f:
+with open(f"./train_datasets/{cfg.train.data_name}/train.txt", "r", encoding="utf-8") as f:
     train_ds = f.read()
-with open(f"./train_datasets/{cfg.paths.data_name}/val.txt", "r", encoding="utf-8") as f:
+with open(f"./train_datasets/{cfg.train.data_name}/val.txt", "r", encoding="utf-8") as f:
     val_ds = f.read()
-with open(f"./train_datasets/{cfg.paths.data_name}/test.txt", "r", encoding="utf-8") as f:
+with open(f"./train_datasets/{cfg.train.data_name}/test.txt", "r", encoding="utf-8") as f:
     test_ds = f.read()
 
 # Load tokenizer
@@ -31,7 +31,7 @@ tkz = tokenizer.Tokenizer().load(f"./tokenizer/{cfg.paths.tokenizer}.json")
 tkz.set_batch_data(train_ds, val_ds, test_ds)
 
 # Load model
-model_general_data = torch.load(f"./model_saves/{cfg.paths.curr_model}/info.pt", map_location=device)
+model_general_data = torch.load(f"./model_saves/{cfg.paths.model_name}/info.pt", map_location=device)
 
 model_cfg = config.ModelConfig(**model_general_data["model_config"])
 model = Model(model_cfg, tkz.vocab_count, tkz.pad).to(device)
@@ -103,7 +103,7 @@ for i in range(cfg.train.epochs):
                 'data_loss': data_loss,
                 'val_loss': val_loss,
                 'best_val': best_val,
-            }, f'./model_saves/{cfg.paths.new_model}/info.pt')
+            }, f'./model_saves/{cfg.paths.save_as}/info.pt')
         else:
             epoch_log['best_val'] = round(best_val, 4)
             train_log[f'epoch {i + 1}'] = epoch_log
@@ -113,7 +113,7 @@ for i in range(cfg.train.epochs):
     train_log[f'epoch {i + 1}'] = epoch_log
 
 # Load last model
-last = torch.load(f'./model_saves/{cfg.paths.new_model}/info.pt', map_location=device)
+last = torch.load(f'./model_saves/{cfg.paths.save_as}/info.pt', map_location=device)
 model.load_state_dict(last['model'])
 
 # Test model
@@ -126,5 +126,5 @@ with torch.no_grad():
 train_log['test loss'] = round(test_loss, 4)
 
 # Save train log
-with open(f'./model_saves/{cfg.paths.new_model}/log.json', 'w') as log:
+with open(f'./model_saves/{cfg.paths.save_as}/log.json', 'w') as log:
     json.dump(train_log, log, indent=4)

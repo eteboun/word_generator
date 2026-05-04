@@ -1,11 +1,13 @@
 {
   "train": {
-    "batch_size": 256,
+    "data_name": "ds_1",
+    "batch_size": 512,
     "epochs": 30,
     "lr": 0.001
   },
   "model": {
-    "features": 256,
+    "model_name": "initial3",
+    "features": 512,
     "hidden_state": 1024
   }
 }
