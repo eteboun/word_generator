@@ -1,0 +1,9 @@
+{
+    "model_name": "initial",
+    "tokenizer": "initial_tkz",
+
+    "temperature": 0.9,
+    "p": 0.9,
+    "freq_penalty": 1.5,
+    "n": 20
+}

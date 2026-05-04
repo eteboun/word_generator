@@ -19,6 +19,20 @@ class Model(nn.Module):
 
         return logits
 
+    @staticmethod
+    def apply_sampling(logits: torch.Tensor, generated: torch.Tensor,
+                       temperature: int | float, p: int | float,
+                       freq_penalty: int | float) -> int:
+
+        logits /= temperature
+        logits -= freq_penalty * torch.bincount(generated, minlength=logits.shape[0])
+        logits = Model.top_p_filter(logits, p=p)
+
+        probs = torch.softmax(logits, dim=-1)
+        selected = torch.multinomial(probs, 1)
+
+        return selected.item()
+
     def __init__(self,
                  cfg: ModelConfig,
                  vocab_count: int,
@@ -44,7 +58,7 @@ class Model(nn.Module):
 
     def forward(self,
                 inputs: torch.Tensor,
-                targets: torch.Tensor = None) -> torch.Tensor:
+                targets: torch.Tensor) -> torch.Tensor:
 
         device = inputs.device
 
@@ -63,17 +77,15 @@ class Model(nn.Module):
             out = self.mix_out(torch.relu(self.mix_in(self.ln(cont))))
 
             logits = out @ self.emb.weight.transpose(-1, -2) / self.cfg.features ** 0.5
-            if targets is not None:
-                loss_log.append(
-                    self.ce_loss(logits, targets[..., i])
-                )
+            loss_log.append(
+                self.ce_loss(logits, targets[..., i])
+            )
 
             state = cont
 
-        if targets is None: return logits
-        else:
-            loss = torch.stack(loss_log).mean()
-            return loss
+
+        loss = torch.stack(loss_log).mean()
+        return loss
 
     def fit(self,
             batch_iter: Generator[tuple[list[list[int]], list[list[int]]], None, None],
@@ -133,3 +145,50 @@ class Model(nn.Module):
         calc_loss = batch_loss / count
 
         return calc_loss
+
+    def predict(self, input_: torch.Tensor, state: torch.Tensor) -> tuple:
+
+        for id_ in input_:
+            vecs = self.emb(id_)
+
+            see = torch.sigmoid(torch.cat((vecs, state), dim=-1) @ self.see + self.bias)
+            cont = state * see + vecs * (1 - see)
+
+            out = self.mix_out(torch.relu(self.mix_in(self.ln(cont))))
+
+            logits = out @ self.emb.weight.transpose(-1, -2) / self.cfg.features ** 0.5
+
+            state = cont
+
+        return logits, state
+
+    # 1-dim list
+    def generate(self, encoded_input: list, eow_id: int,
+                 temperature: int | float, p: int | float,
+                 freq_penalty: int | float, n: int) -> list:
+
+        if n <= 0:
+            return []
+
+        input_ = torch.tensor(encoded_input, dtype=torch.long, device=self.emb.weight.device)
+        state = torch.zeros(self.cfg.features, device=self.emb.weight.device)
+        generated = torch.empty(n, dtype=torch.long, device=self.emb.weight.device)
+        size = 0
+
+        logits, state = self.predict(input_, state)
+        next_id = Model.apply_sampling(logits=logits, generated=generated[:size],
+                                       temperature=temperature, p=p,
+                                       freq_penalty=freq_penalty)
+
+        generated[0] = next_id
+        size = 1
+        for _ in range(n - 1):
+            if next_id == eow_id: break
+            logits, state = self.predict(torch.tensor([next_id], dtype=torch.long, device=self.emb.weight.device), state)
+            next_id = Model.apply_sampling(logits=logits, generated=generated[:size],
+                                           temperature=temperature, p=p,
+                                           freq_penalty=freq_penalty)
+            generated[size] = next_id
+            size += 1
+
+        return generated[:size].tolist()

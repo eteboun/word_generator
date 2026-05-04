@@ -77,6 +77,13 @@ class Tokenizer:
 
         self.letters_t = {idx: word for word, idx in self.letters.items()}
 
+    def get_prompt(self, text):
+        if not text:
+            return self.encode('', eow=False)
+        text = Tokenizer.clean_text(text)
+        text = Tokenizer.extract(text)
+        return self.encode(text[0], eow=False)
+
     def encode(self, word: str, eow: bool = True) -> list[int]:
         encoded_pieces = [self.sow] + [self.letters.get(ch, self.unk) for ch in word] + ([self.eow] if eow else [])
         return encoded_pieces

@@ -46,11 +46,15 @@ class TrainConfig(Config):
         self.lr = lr
 
 class PredictConfig(Config):
-    parameters = {"temperature": (int, float), "p": (int, float),
+    parameters = {"model_name": str, "tokenizer": str,
+                  "temperature": (int, float), "p": (int, float),
                   "freq_penalty": (int, float), "n": int}
 
-    def __init__(self, temperature: int | float, p: int | float,
+    def __init__(self, model_name: str, tokenizer: str,
+                 temperature: int | float, p: int | float,
                  freq_penalty: int | float, n: int) -> None:
+        self.model_name = model_name
+        self.tokenizer = tokenizer
         self.temperature = temperature
         self.p = p
         self.freq_penalty = freq_penalty
