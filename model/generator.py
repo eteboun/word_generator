@@ -3,7 +3,6 @@ import torch.nn as nn
 from typing import Generator
 from config.config import ModelConfig
 
-
 class Model(nn.Module):
 
     @staticmethod
@@ -50,7 +49,7 @@ class Model(nn.Module):
         device = inputs.device
 
         loss_log = []
-        state = torch.zeros(inputs.shape[0], self.features, device=device)
+        state = torch.zeros(inputs.shape[0], self.cfg.features, device=device)
 
         size = inputs.shape[-1]
         for i in range(size):
@@ -63,7 +62,7 @@ class Model(nn.Module):
 
             out = self.mix_out(torch.relu(self.mix_in(self.ln(cont))))
 
-            logits = out @ self.emb.weight.transpose(-1, -2) / self.features ** 0.5
+            logits = out @ self.emb.weight.transpose(-1, -2) / self.cfg.features ** 0.5
             if targets is not None:
                 loss_log.append(
                     self.ce_loss(logits, targets[..., i])

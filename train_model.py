@@ -10,8 +10,6 @@ from model.generator import Model
 
 # Config
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-cfg_name = 'train1_cfg'
 cfg = config.ForwardTrainConfig.load(f'./config/forward_train_cfg.json')
 
 # Path control
@@ -35,7 +33,7 @@ tkz.set_batch_data(train_ds, val_ds, test_ds)
 # Load model
 model_general_data = torch.load(f"./model_saves/{cfg.paths.curr_model}/info.pt", map_location=device)
 
-model_cfg = model_general_data["model_config"]
+model_cfg = config.ModelConfig(**model_general_data["model_config"])
 model = Model(model_cfg, tkz.vocab_count, tkz.pad).to(device)
 
 model_state_dict = model_general_data["model"]
@@ -105,7 +103,7 @@ for i in range(cfg.train.epochs):
                 'data_loss': data_loss,
                 'val_loss': val_loss,
                 'best_val': best_val,
-            }, f'./model_saves/{cfg.paths.new_model}(info.pt')
+            }, f'./model_saves/{cfg.paths.new_model}/info.pt')
         else:
             epoch_log['best_val'] = round(best_val, 4)
             train_log[f'epoch {i + 1}'] = epoch_log
