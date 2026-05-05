@@ -1,5 +1,5 @@
 {
-    "model_name": "last_train",
+    "model_name": "initial",
     "tokenizer": "initial_tkz",
 
     "temperature": 0.9,

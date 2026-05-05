@@ -83,7 +83,6 @@ class Model(nn.Module):
 
             state = out
 
-
         loss = torch.stack(loss_log).mean()
         return loss
 
@@ -158,7 +157,7 @@ class Model(nn.Module):
 
             logits = out @ self.emb.weight.transpose(-1, -2) / self.cfg.features ** 0.5
 
-            state = cont
+            state = out
 
         return logits, state
 
